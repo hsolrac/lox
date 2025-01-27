@@ -8,7 +8,7 @@ use error::*;
 use std::{
     env,
     fs::{self},
-    io::{self},
+    io::{self, stdout, Write},
     process,
 };
 
@@ -21,7 +21,7 @@ fn main() {
         print!("Usage: jlox [script]");
         process::exit(64);
     } else if args.len() == 2 {
-        run_file(&args[1]);
+        run_file(&args[1]).expect("Could not run file");
     } else {
         run_prompt();
     }
@@ -44,20 +44,22 @@ fn run_file(path: &String) -> io::Result<()> {
 fn run_prompt() {
     let stdin = io::stdin();
     print!("> ");
-    for (line_number, line) in stdin.lock().lines().enumerate() {
+    for line in stdin.lock().lines() {
         if let Ok(line) = line {
             if line.is_empty() {
                 break;
             }
             match run(line) {
                 Ok(_) => {}
-                Err(mut m) => {
-                    m.report(line_number.to_string());
+                Err(_) => {
+                    // Ignore: error was already reported
                 }
             };
         } else {
             break;
         }
+        print!("> ");
+        stdout().flush();
     }
 }
 
