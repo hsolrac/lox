@@ -92,7 +92,7 @@ impl Scanner {
             }
             '/' => {
                 if self.is_match('/') {
-                    while self.peak() != '\n' && self.is_at_end() {
+                    while self.peak() != Some('\n') && self.is_at_end() {
                         self.advance();
                     }
                 } else {
@@ -103,6 +103,10 @@ impl Scanner {
             '\n' => {
                 self.line += 1;
             }
+            '"' => {
+                self.string()?;
+            }
+            '0'..='9' => self.number(),
             _ => {
                 return Err(LoxError::error(
                     self.line,
@@ -143,18 +147,40 @@ impl Scanner {
         }
     }
 
-    fn peak(&mut self) -> char {
-        match self.source.get(self.current) {
-            Some(_) if self.is_at_end() => {
-                return '\0';
-            }
-            _ => return *self.source.get(self.current).unwrap(),
-        }
+    fn peak(&mut self) -> Option<char> {
+        self.source.get(self.current).copied()
     }
 
-    fn string(&mut self) {
-        while self.peak() != '"' && !self.is_at_end() {
-            if self.peak() == '\n' {
+    fn peek_next(&self) -> Option<char> {
+        if self.current + 1 >= self.source.len() {
+            '\0';
+        }
+
+        self.source.get(self.current + 1).copied()
+    }
+
+    fn number(&mut self) {
+        while Scanner::is_digit(self.peak()) {
+            self.advance();
+        }
+
+        if self.peak() == Some('.') && Scanner::is_digit(self.peek_next()) {
+            self.advance();
+
+            while Scanner::is_digit(self.peak()) {
+                self.advance();
+            }
+        }
+
+        let value: String = self.source[self.start..self.current].iter().collect();
+        let num: f64 = value.parse().unwrap();
+
+        self.add_token_object(TokenType::Number, Some(Object::Num(num)))
+    }
+
+    fn string(&mut self) -> Result<(), LoxError> {
+        while self.peak() != Some('"') && !self.is_at_end() {
+            if self.peak() == Some('\n') {
                 self.line += 1
             }
             self.advance();
@@ -162,7 +188,6 @@ impl Scanner {
 
         if self.is_at_end() {
             LoxError::error(self.line, "Unterminated string.".to_string());
-            return;
         }
 
         self.advance();
@@ -170,6 +195,15 @@ impl Scanner {
         let value = self.source[self.start + 1..self.current - 1]
             .iter()
             .collect();
-        self.add_token_object(TokenType::String, Some(Object::Str(value)))
+        self.add_token_object(TokenType::String, Some(Object::Str(value)));
+        Ok(())
+    }
+
+    fn is_digit(ch: Option<char>) -> bool {
+        if let Some(ch) = ch {
+            ch.is_ascii_digit()
+        } else {
+            false
+        }
     }
 }
