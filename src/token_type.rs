@@ -35,6 +35,7 @@ pub enum TokenType {
     Super,
     This,
     True,
+    False,
     Var,
     While,
     Eof,

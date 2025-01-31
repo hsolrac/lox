@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::error::LoxError;
 use crate::token::*;
 use crate::token_type::TokenType;
@@ -8,16 +10,35 @@ pub struct Scanner {
     start: usize,
     current: usize,
     line: usize,
+    keywords: HashMap<String, TokenType>,
 }
 
 impl Scanner {
     pub fn new(source: String) -> Scanner {
+        let mut keywords = HashMap::new();
+        keywords.insert("and", TokenType::And);
+        keywords.insert("class", TokenType::Class);
+        keywords.insert("else", TokenType::Else);
+        keywords.insert("false", TokenType::False);
+        keywords.insert("for", TokenType::For);
+        keywords.insert("fun", TokenType::Fun);
+        keywords.insert("if", TokenType::If);
+        keywords.insert("nil", TokenType::Nil);
+        keywords.insert("or", TokenType::Or);
+        keywords.insert("print", TokenType::Print);
+        keywords.insert("return", TokenType::Return);
+        keywords.insert("super", TokenType::Super);
+        keywords.insert("this", TokenType::This);
+        keywords.insert("true", TokenType::True);
+        keywords.insert("var", TokenType::Var);
+        keywords.insert("while", TokenType::While);
         Scanner {
             source: source.chars().collect(),
             tokens: Vec::new(),
             start: 0,
             current: 0,
             line: 1,
+            keywords: HashMap::new(),
         }
     }
 
@@ -92,7 +113,7 @@ impl Scanner {
             }
             '/' => {
                 if self.is_match('/') {
-                    while self.peak() != Some('\n') && self.is_at_end() {
+                    while self.peek() != Some('\n') && self.is_at_end() {
                         self.advance();
                     }
                 } else {
@@ -108,6 +129,11 @@ impl Scanner {
             }
             '0'..='9' => self.number(),
             _ => {
+                if c.is_ascii_alphabetic() {
+                    self.identifier();
+                }
+            }
+            _ => {
                 return Err(LoxError::error(
                     self.line,
                     "Unexpected character.".to_string(),
@@ -115,6 +141,19 @@ impl Scanner {
             }
         }
         Ok(())
+    }
+
+    fn identifier(&mut self) {
+        while Scanner::is_alpha_numeric(self.peek()) {
+            self.advance();
+        }
+
+        let text: String = self.source[self.start..self.current].iter().collect();
+        if let Some(kind) = Scanner::keyword(&text) {
+            self.add_token(kind);
+        } else {
+            self.add_token(TokenType::Identifier)
+        }
     }
 
     fn is_at_end(&self) -> bool {
@@ -147,7 +186,7 @@ impl Scanner {
         }
     }
 
-    fn peak(&mut self) -> Option<char> {
+    fn peek(&self) -> Option<char> {
         self.source.get(self.current).copied()
     }
 
@@ -159,15 +198,37 @@ impl Scanner {
         self.source.get(self.current + 1).copied()
     }
 
+    fn keyword(check: &str) -> Option<TokenType> {
+        match check {
+            "and" => Some(TokenType::And),
+            "class" => Some(TokenType::Class),
+            "else" => Some(TokenType::Else),
+            "false" => Some(TokenType::False),
+            "for" => Some(TokenType::For),
+            "fun" => Some(TokenType::Fun),
+            "if" => Some(TokenType::If),
+            "nil" => Some(TokenType::Nil),
+            "or" => Some(TokenType::Or),
+            "print" => Some(TokenType::Print),
+            "return" => Some(TokenType::Return),
+            "super" => Some(TokenType::Super),
+            "this" => Some(TokenType::This),
+            "true" => Some(TokenType::True),
+            "var" => Some(TokenType::Var),
+            "while" => Some(TokenType::While),
+            _ => None,
+        }
+    }
+
     fn number(&mut self) {
-        while Scanner::is_digit(self.peak()) {
+        while Scanner::is_digit(self.peek()) {
             self.advance();
         }
 
-        if self.peak() == Some('.') && Scanner::is_digit(self.peek_next()) {
+        if self.peek() == Some('.') && Scanner::is_digit(self.peek_next()) {
             self.advance();
 
-            while Scanner::is_digit(self.peak()) {
+            while Scanner::is_digit(self.peek()) {
                 self.advance();
             }
         }
@@ -178,9 +239,25 @@ impl Scanner {
         self.add_token_object(TokenType::Number, Some(Object::Num(num)))
     }
 
+    fn is_digit(ch: Option<char>) -> bool {
+        if let Some(ch) = ch {
+            ch.is_ascii_digit()
+        } else {
+            false
+        }
+    }
+
+    fn is_alpha_numeric(ch: Option<char>) -> bool {
+        if let Some(ch) = ch {
+            ch.is_ascii_alphanumeric()
+        } else {
+            false
+        }
+    }
+
     fn string(&mut self) -> Result<(), LoxError> {
-        while self.peak() != Some('"') && !self.is_at_end() {
-            if self.peak() == Some('\n') {
+        while self.peek() != Some('"') && !self.is_at_end() {
+            if self.peek() == Some('\n') {
                 self.line += 1
             }
             self.advance();
@@ -197,13 +274,5 @@ impl Scanner {
             .collect();
         self.add_token_object(TokenType::String, Some(Object::Str(value)));
         Ok(())
-    }
-
-    fn is_digit(ch: Option<char>) -> bool {
-        if let Some(ch) = ch {
-            ch.is_ascii_digit()
-        } else {
-            false
-        }
     }
 }
