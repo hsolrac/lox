@@ -91,7 +91,7 @@ impl Scanner {
                 let tok = if self.is_match('=') {
                     TokenType::EqualEqual
                 } else {
-                    TokenType::Equal
+                    TokenType::Assinged
                 };
                 self.add_token(tok);
             }

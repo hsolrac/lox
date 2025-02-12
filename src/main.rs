@@ -42,6 +42,7 @@ fn run_file(path: &String) -> io::Result<()> {
 fn run_prompt() {
     let stdin = io::stdin();
     print!("> ");
+    let _ = stdout().flush();
     for line in stdin.lock().lines() {
         if let Ok(line) = line {
             if line.is_empty() {
@@ -57,7 +58,7 @@ fn run_prompt() {
             break;
         }
         print!("> ");
-        stdout().flush();
+        let _ = stdout().flush();
     }
 }
 

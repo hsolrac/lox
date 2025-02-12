@@ -13,7 +13,7 @@ pub enum TokenType {
     Star,
     Bang,
     BangEqual,
-    Equal,
+    Assinged,
     EqualEqual,
     Greater,
     GreaterEqual,
